@@ -74,8 +74,26 @@ else
 fi
 
 # Generate a random password
-ROOT_PASSWORD=$(openssl rand -base64 32)
-DB_PASSWORD=$(openssl rand -base64 32)
+if command -v pwgen &> /dev/null
+then
+    ROOT_PASSWORD=$(pwgen 32 1 -B -s -v)
+    DB_PASSWORD=$(pwgen 32 1 -B -s -v)
+else
+    echo "pwgen could not be found"
+    echo "It's recommended to install pwgen for generating secure passwords."
+    echo "Would you like to install pwgen now? [Y/n]"
+    read response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
+    then
+        sudo apt-get update
+        sudo apt-get install pwgen -y
+        ROOT_PASSWORD=$(pwgen 32 1 -B -s -v)
+        DB_PASSWORD=$(pwgen 32 1 -B -s -v)
+    else
+        echo "Skipping pwgen installation. Please install pwgen manually if you need to generate secure passwords."
+        exit 1
+    fi
+fi
 
 # Convert to lowercase and replace spaces with dashes
 PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
