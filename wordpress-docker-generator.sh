@@ -166,12 +166,12 @@ if [ \$# -ne 2 ]; then
 fi
 
 # Get project name, domain, and email from arguments
-DOMAIN=\$2
-EMAIL=\$3
+DOMAIN=\$1
+EMAIL=\$2
 
 
 # Start the docker containers
-docker-compose -f $PROJECT_NAME-docker-compose.yml up -d
+docker compose -f $PROJECT_NAME-docker-compose.yml up -d
 
 # Wait for the containers to start
 sleep 10
@@ -199,6 +199,9 @@ service nginx reload
 
 # Obtain and install the SSL certificate
 certbot --nginx -d \$DOMAIN --non-interactive --agree-tos --hsts -m \$EMAIL --redirect
+
+# Reload Nginx
+service nginx reload
 EOF
 
 # Make the deploy.sh script executable
@@ -208,7 +211,7 @@ chmod +x deploy.sh
 echo "Docker Compose file created for project: $PROJECT_NAME"
 echo "To start your WordPress instance, run the following commands:"
 echo "cd $PROJECT_NAME"
-echo "docker-compose -f $PROJECT_NAME-docker-compose.yml up -d"
+echo "docker compose -f $PROJECT_NAME-docker-compose.yml up -d"
 echo "DB Connection details:"
 echo "Database host: localhost (if MySQL client is installed on the host)"
 echo "Database port: $DB_PORT (if MySQL client is installed on the host)"
