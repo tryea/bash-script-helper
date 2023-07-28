@@ -18,8 +18,8 @@ then
 fi
 
 # Check number of arguments
-if [ $# -ne 3 ]; then
-  echo "Usage: $0 [project name] [wordpress port] [mysql port]"
+if [ $# -ne 4 ]; then
+  echo "Usage: $0 [project name] [wordpress port] [mysql port] [root domain? yes/no]"
   exit 1
 fi
 
@@ -27,6 +27,8 @@ fi
 PROJECT_NAME=$1
 WP_PORT=$2
 DB_PORT=$3
+ROOT_DOMAIN=$4
+
 
 # Function to check if a port is in use
 is_port_in_use() {
@@ -104,6 +106,22 @@ mkdir $PROJECT_NAME
 # Go into the project directory
 cd $PROJECT_NAME
 
+if [ "$ROOT_DOMAIN" = "yes" ]; then
+    WORDPRESS_CONFIG_EXTRA=$(cat <<-EOF
+|
+        define('WP_HOME','https://ersaptaaristo.dev');
+        define('WP_SITEURL','https://ersaptaaristo.dev');
+EOF
+    )
+else
+    WORDPRESS_CONFIG_EXTRA=$(cat <<-EOF
+|
+        define('WP_HOME','https://$PROJECT_NAME.ersaptaaristo.dev');
+        define('WP_SITEURL','https://$PROJECT_NAME.ersaptaaristo.dev');
+EOF
+    )
+fi
+
 # Create the docker-compose.yml file
 cat << EOF > $PROJECT_NAME-docker-compose.yml
 version: '3.1'
@@ -114,6 +132,8 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     restart: always
+    ports:
+      - $DB_PORT:3306
     environment:
       MYSQL_ROOT_PASSWORD: $ROOT_PASSWORD
       MYSQL_DATABASE: wordpress
@@ -125,13 +145,14 @@ services:
       - db
     build: .
     ports:
-      - $WP_PORT:$WP_PORT
+      - $WP_PORT:80
     restart: always
     environment:
-      WORDPRESS_DB_HOST: db:$DB_PORT
+      WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_USER: $DB_USERNAME
       WORDPRESS_DB_PASSWORD: $DB_PASSWORD
       WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_CONFIG_EXTRA: $WORDPRESS_CONFIG_EXTRA
 volumes:
     db_data: {}
 EOF
@@ -184,9 +205,10 @@ server {
 
     location / {
         proxy_pass http://localhost:$WP_PORT;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host \\\$host;
+        proxy_set_header X-Real-IP \\\$remote_addr;
+        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\\$scheme;
     }
 }
 EOF2
@@ -198,7 +220,7 @@ ln -s /etc/nginx/sites-available/\$DOMAIN /etc/nginx/sites-enabled/
 service nginx reload
 
 # Obtain and install the SSL certificate
-certbot --nginx -d \$DOMAIN --non-interactive --agree-tos --hsts -m \$EMAIL --redirect
+certbot --nginx -d \$DOMAIN --non-interactive --agree-tos -m \$EMAIL --redirect
 
 # Reload Nginx
 service nginx reload
