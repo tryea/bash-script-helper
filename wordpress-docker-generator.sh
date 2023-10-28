@@ -170,10 +170,10 @@ EOF
 
 cat << EOF > php-conf/uploads.ini
 file_uploads = On
-memory_limit = 256M
-upload_max_filesize = 64M
-post_max_size = 64M
-max_execution_time = 300
+memory_limit = 512M
+upload_max_filesize = 100M
+post_max_size = 100M
+max_execution_time = 3000
 EOF
 
 # Create the deploy.sh file
@@ -209,6 +209,8 @@ server {
         proxy_set_header X-Real-IP \\\$remote_addr;
         proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \\\$scheme;
+        client_max_body_size 100M;
+        client_body_buffer_size 100M;
     }
 }
 EOF2
